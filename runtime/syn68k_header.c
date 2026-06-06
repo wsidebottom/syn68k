@@ -8,6 +8,10 @@
 # ifdef __CHECKER__
 #  define GLOBAL_REGISTER_DECLS \
          register const uint16 *code asm ("%si");
+# elif defined (__MINGW32__)
+#  define GLOBAL_REGISTER_DECLS \
+         register const uint16 *code asm ("%si"); \
+         static CPUState *cpu_state_ptr;
 # else /* !__CHECKER__ */
 #  define GLOBAL_REGISTER_DECLS \
          register const uint16 *code asm ("%si"); \
@@ -201,7 +205,53 @@ static void next_instruction_hook(const void *vp)
 
 #else
 
-#define NEXT_INSTRUCTION_HOOK(n)
+static unsigned long syn68k_host_poll_count;
+
+static __inline__ void
+syn68k_host_poll (const uint16 *current_code)
+{
+  const Block *best_block;
+  unsigned long best_error;
+  int i;
+
+  (void) current_code;
+  if (call_while_busy_func != NULL
+      && (++syn68k_host_poll_count & 0xFFFFF) == 0)
+    call_while_busy_func (1);
+  if ((syn68k_host_poll_count & 0xFFFFFF) == 0)
+    {
+      best_block = NULL;
+      best_error = 0xFFFFFFFFUL;
+      for (i = 0; i < NUM_HASH_BUCKETS; ++i)
+	{
+	  const Block *b;
+
+	  for (b = block_hash_table[i]; b != NULL; b = b->next_in_hash_bucket)
+	    if (b->compiled_code <= current_code)
+	      {
+		unsigned long error = current_code - b->compiled_code;
+
+		if (error < best_error)
+		  {
+		    best_error = error;
+		    best_block = b;
+		  }
+	      }
+	}
+      if (best_block != NULL)
+	fprintf (stderr, "trace: syn68k poll count=%lu code=%p m68k=0x%08lx off=%lu depth=%d\n",
+		 syn68k_host_poll_count, (const void *) current_code,
+		 (unsigned long) best_block->m68k_start_address, best_error,
+		 emulation_depth);
+      else
+	fprintf (stderr, "trace: syn68k poll count=%lu code=%p m68k=? depth=%d\n",
+		 syn68k_host_poll_count, (const void *) current_code,
+		 emulation_depth);
+      fflush (stderr);
+    }
+}
+
+#define NEXT_INSTRUCTION_HOOK(n) syn68k_host_poll (code + (n) - PTR_WORDS)
 
 #endif
 
@@ -1038,9 +1088,28 @@ interpret_code (const uint16 *start_code)
       CASE (0x00B3)
 	CASE_PREAMBLE ("Reserved - callback", "", "", "", "")
 	SAVE_CPU_STATE ();
-	code = code_lookup ((*((uint32 (**)(uint32, void *)) code))
-			    (*(uint32 *)(code + PTR_WORDS + PTR_WORDS),
-			     *(void **)(code + PTR_WORDS)));
+	{
+	  uint32 (*callback_func) (uint32, void *);
+	  void *callback_arg;
+	  uint32 callback_addr;
+	  uint32 callback_ret;
+	  static unsigned long callback_trace_count;
+
+	  callback_func = *((uint32 (**)(uint32, void *)) code);
+	  callback_arg = *(void **)(code + PTR_WORDS);
+	  callback_addr = *(uint32 *)(code + PTR_WORDS + PTR_WORDS);
+	  callback_ret = callback_func (callback_addr, callback_arg);
+	  if (callback_trace_count < 50 || callback_ret == callback_addr)
+	    {
+	      ++callback_trace_count;
+	      fprintf (stderr, "trace: syn68k callback func=%p arg=%p addr=0x%08lx ret=0x%08lx\n",
+		       (void *) callback_func, callback_arg,
+		       (unsigned long) callback_addr,
+		       (unsigned long) callback_ret);
+	      fflush (stderr);
+	    }
+	  code = code_lookup (callback_ret);
+	}
 	LOAD_CPU_STATE ();
 	RESTORE_FS ();
 	CASE_POSTAMBLE (ROUND_UP (PTR_WORDS));
@@ -1063,4 +1132,3 @@ interpret_code (const uint16 *start_code)
 	a7.ul.n -= 4;
 	WRITEUL_UNSWAPPED (SYN68K_TO_US (CLEAN (a7.ul.n)), retaddr);
 	CASE_POSTAMBLE (ROUND_UP (PTR_WORDS));
-

@@ -49,6 +49,18 @@ callback_compile (Block *parent, syn68k_addr_t m68k_address, Block **new)
   uint16 *code;
   uint32 ix = (m68k_address - CALLBACK_STUB_BASE) / sizeof (uint16);
   const CallBackInfo *callback_info = &callback[ix];
+  static int printed_bases_p;
+
+  if (!printed_bases_p)
+    {
+      printed_bases_p = 1;
+      fprintf (stderr, "trace: callback bases magic=0x%08lx stub=0x%08lx exit=0x%08lx rte=0x%08lx\n",
+	       (unsigned long) MAGIC_ADDRESS_BASE,
+	       (unsigned long) CALLBACK_STUB_BASE,
+	       (unsigned long) MAGIC_EXIT_EMULATOR_ADDRESS,
+	       (unsigned long) MAGIC_RTE_ADDRESS);
+      fflush (stderr);
+    }
 
   /* Make sure a callback is actually installed. */
   if (ix >= num_callback_slots || callback_info->func == NULL)
@@ -60,6 +72,10 @@ callback_compile (Block *parent, syn68k_addr_t m68k_address, Block **new)
   b = *new = make_artificial_block (parent, m68k_address,
 				    OPCODE_WORDS + PTR_WORDS + PTR_WORDS + 2,
 				    &code);
+  fprintf (stderr, "trace: callback_compile addr=0x%08lx slot=%lu func=%p arg=%p\n",
+	   (unsigned long) m68k_address, (unsigned long) ix,
+	   (void *) callback_info->func, callback_info->arg);
+  fflush (stderr);
 
   /* Create the synthetic code for the callback. */
 #ifdef USE_DIRECT_DISPATCH
@@ -114,6 +130,11 @@ callback_install (callback_handler_t func, void *arbitrary_argument)
   /* Remember the callback they are specifying. */
   callback[slot].func = func;
   callback[slot].arg  = arbitrary_argument;
+  fprintf (stderr, "trace: callback_install slot=%lu addr=0x%08lx func=%p arg=%p caller=%p\n",
+	   (unsigned long) slot,
+	   (unsigned long) (CALLBACK_STUB_BASE + (slot * sizeof (uint16))),
+	   (void *) func, arbitrary_argument, __builtin_return_address (0));
+  fflush (stderr);
 
   /* Move lowest free callback slot to next lowest slot. */
   for (lowest_free_callback_slot++; ; lowest_free_callback_slot++)

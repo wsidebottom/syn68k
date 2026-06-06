@@ -306,6 +306,8 @@ create_asmdata (const template_t *t, int num_operands)
 		   0xFFFFFFFF, 0xFFFFFFFE, 0x871529, 0x392332, 0xFA034433,
                  0x12345678, 0x87654321 } },
      };
+  static const value_set_t shift_count_values =
+    { 12, { 0, 1, 2, 0xFF, 0xFE, 127, 128, 129, 0x37, 156, 0x12, 159 } };
 #if 0
   /* Explanation of this warning:
    * The i386 has slightly more compact opcode sequences in some situations
@@ -368,6 +370,8 @@ create_asmdata (const template_t *t, int num_operands)
     {
       if (t->operand[n].type == REGISTER)
 	value[n] = &register_values[t->operand[n].size];
+      else if (strcmp (t->operand_name[n], "shift_const") == 0)
+	value[n] = &shift_count_values;
       else
 	value[n] = &immediate_values[t->operand[n].size];
     }
