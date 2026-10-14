@@ -102,11 +102,12 @@ libsyn68k.a: $(OBJS) $(host_native)/subdir-stmp
 # obvious that can be used.
 
 syn68k.o: syn68k.c
-	outgoing=;\
+	outgoing=; reserved=;\
+	case "$(host_os)" in mingw*) reserved=-ffixed-ebp;; esac; \
 	$(CC) -maccumulate-outgoing-args -c -x c /dev/null 2> /dev/null \
             && outgoing=-maccumulate-outgoing-args; \
 	$(CC) -S $(SYN68K_CFLAGS) $(dce_fixup) -Wall -static -fno-defer-pop -Wno-unused\
-		$(LOCAL_INCLUDES) $$outgoing syn68k.c -o ./syn68k.s
+		$(LOCAL_INCLUDES) $$outgoing $$reserved syn68k.c -o ./syn68k.s
 	if [ x"$(CLEANUP)" != x ] ; then \
 		$(PERL) $(srcdir)/$(CLEANUP) < syn68k.s > syn68k.s.new && \
                 mv syn68k.s.new syn68k.s ; fi

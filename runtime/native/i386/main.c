@@ -68,8 +68,13 @@ main (int argc, char *argv[])
 	putc ('\n', fp);  /* Add an extra blank line. */
       fclose (fp);
 
+#if defined (__MINGW32__)
+      sprintf (cmd, "%s -s nextobj NEW_C_FILE=%s NEW_O_FILE=%s > NUL",
+	       argv[1], c_file, o_file);
+#else
       sprintf (cmd, "%s -s nextobj NEW_C_FILE=%s NEW_O_FILE=%s > /dev/null",
 	       argv[1], c_file, o_file);
+#endif
       if (system (cmd))
 	{
 	  fprintf (stderr, "Unable to make \"%s\".\n", c_file);

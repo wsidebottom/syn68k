@@ -92,12 +92,20 @@ process_template (FILE *fp, FILE *header_fp, const template_t *t,
 
       /* Build the program to analyze it.  If the make failed, we fail too. */
       system ("rm -f analyze analyze.o");
+#if defined (__MINGW32__)
+      sprintf (cmd, "%s -s analyze > NUL", make);
+#else
       sprintf (cmd, "%s -s analyze > /dev/null", make);
+#endif
       if (system (cmd) != 0)
 	return FAILURE;
 
       /* Get the output of the analyzing program. */
+#if defined (__MINGW32__)
+      sprintf (cmd, "analyze.exe");
+#else
       sprintf (cmd, "./analyze");
+#endif
       bits = popen (cmd, "r");
       if (bits == NULL)
 	return FAILURE;

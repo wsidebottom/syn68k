@@ -215,8 +215,9 @@ syn68k_host_poll (const uint16 *current_code)
   int i;
 
   (void) current_code;
+  ++syn68k_host_poll_count;
   if (call_while_busy_func != NULL
-      && (++syn68k_host_poll_count & 0xFFFFF) == 0)
+      && (syn68k_host_poll_count & 0xFFFFF) == 0)
     call_while_busy_func (1);
   if ((syn68k_host_poll_count & 0xFFFFFF) == 0)
     {
@@ -264,10 +265,21 @@ s68k_handle_opcode_ ## n () \
 # define CASE_PREAMBLE(name,bits,ms,mns,n) {
 extern void s68k_handle_opcode_dummy (void);
 # ifdef i386
+#  ifdef __MINGW32__
+/* MinGW setjmp needs a frame pointer in interpret_code.  Keep its CPU
+ * state pointer in memory there, and restore the native-code ABI at each
+ * dispatch.  The opcode compiler reserves ebp with -ffixed-ebp.
+ */
+#   define SETUP_NATIVE_CPU_STATE() \
+  asm volatile ("movl %0,%%ebp" : : "g" (cpu_state_ptr))
+#  else
+#   define SETUP_NATIVE_CPU_STATE()
+#  endif
 #  define NEXT_INSTRUCTION(words_to_inc) \
 { \
   register void *next_code asm ("%edi");   /* Little-used register. */ \
   NEXT_INSTRUCTION_HOOK(words_to_inc); \
+  SETUP_NATIVE_CPU_STATE (); \
   asm volatile ("movl %3,%0\n\t" \
 		"addl %4,%1\n\t" \
 		"jmp *%0\n" \

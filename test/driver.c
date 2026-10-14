@@ -10,6 +10,10 @@
 
 #include <unistd.h>
 
+#if defined (__MINGW32__)
+#include <windows.h>
+#endif
+
 /* These are set by command-line switches. */
 int test_only_non_cc_variants;  /* If 0, test only cc setting variants. */
 int generate_crc;
@@ -50,7 +54,19 @@ test_all_instructions (uint32 try_count)
 #define M_SIZE (40 * 1024 * 1024)
 #define CODE_SIZE 512
 
-#if     !defined (__linux__)
+#if defined (__MINGW32__)
+/* Match the Linux reference address without depending on malloc's layout. */
+#define DESIRED_PTR ((uint8 *) 0x7F000000 + MEMORY_OFFSET)
+      uint8 *m = VirtualAlloc ((void *) 0x7F000000,
+			      MEMORY_OFFSET + MEM_SIZE + CODE_SIZE + SLOP,
+			      MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+      if (m == NULL)
+	{
+	  fprintf (stderr, "Unable to allocate CPU test memory; error %lu.\n",
+		   (unsigned long) GetLastError ());
+	  exit (EXIT_FAILURE);
+	}
+#elif   !defined (__linux__)
 #define DESIRED_PTR ((uint8 *) 0x26C0000 + MEMORY_OFFSET)
       uint8 *m = (uint8 *)malloc (M_SIZE + CODE_SIZE + MEMORY_OFFSET);
 #else   /* defined (__linux__) */
@@ -68,10 +84,6 @@ test_all_instructions (uint32 try_count)
 #if !defined (__MINGW32__)
       page_size = getpagesize ();
 #else
-#warning We currently do not use getpagesize because with the version
-#warning of MingW32 that we use it winds up pulling in a routine that
-#warning we do not currently have available (VirtualProtect).  This should
-#warning be looked into sometime.
       page_size = 4096;
 #endif
 

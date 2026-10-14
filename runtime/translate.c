@@ -558,6 +558,9 @@ generate_code (Block *b, TempBlockInfo *tbi, BOOL try_native_p)
 
 #endif  /* GENERATE_NATIVE_CODE */
 
+  xmake_executable (b->compiled_code - b->malloc_code_offset,
+		    PTR_BYTES + num_code_bytes);
+
   /* Checksum the code upon which this was based. */
 #ifdef CHECKSUM_BLOCKS
   b->checksum = compute_block_checksum (b);
@@ -1223,6 +1226,7 @@ make_artificial_block (Block *parent, syn68k_addr_t m68k_address,
 {
   Block *b;
   uint16 *code;
+  size_t code_words;
 
   b = block_new ();
   b->m68k_start_address = m68k_address;
@@ -1234,12 +1238,13 @@ make_artificial_block (Block *parent, syn68k_addr_t m68k_address,
     block_add_parent (b, parent);
 
   b->malloc_code_offset = PTR_WORDS;
-  code = (((uint16 *) xcalloc (PTR_WORDS
+  code_words = (PTR_WORDS
 #ifdef GENERATE_NATIVE_CODE
 			       + NATIVE_START_BYTE_OFFSET / sizeof (uint16)
 			       + NATIVE_PREAMBLE_WORDS
 #endif
-			       + extra_words,
+			       + extra_words);
+  code = (((uint16 *) xcalloc (code_words,
 			       sizeof (uint16)))
 	  + PTR_WORDS);  /* Skip over prepended m68k address. */
   WRITE_LONG (&code[-2], m68k_address);
@@ -1274,6 +1279,8 @@ make_artificial_block (Block *parent, syn68k_addr_t m68k_address,
 #else   /* !GENERATE_NATIVE_CODE */
   *extra_start = code;
 #endif  /* !GENERATE_NATIVE_CODE */
+
+  xmake_executable (code - PTR_WORDS, code_words * sizeof (uint16));
 
   return b;
 }

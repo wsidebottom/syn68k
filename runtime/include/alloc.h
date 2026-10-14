@@ -6,5 +6,6 @@
 extern void *xmalloc (size_t size);
 extern void *xrealloc (void *old, size_t new_size);
 extern void *xcalloc (size_t num_elems, size_t byte_size);
+extern void xmake_executable (const void *p, size_t size);
 
 #endif  /* Not _alloc_h_ */
