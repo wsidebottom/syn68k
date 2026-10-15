@@ -80,6 +80,7 @@ static __inline__ const uint16 *code_lookup (uint32 addr) __attribute__((always_
 static __inline__ const uint16 *
 code_lookup (uint32 addr)
 {
+  addr &= syn68k_address_mask;
   Block *b = block_hash_table[BLOCK_HASH (addr)];
   const uint16 *c;
   if (b != NULL && b->m68k_start_address == addr)
@@ -814,7 +815,7 @@ interpret_code (const uint16 *start_code)
       CASE (casenum) \
         CASE_PREAMBLE ("Reserved - compute " #p " for mode == 2/3, reg == " \
 		       #reg, "", "", "", "") \
-	p = (char *) SYN68K_TO_US (CLEAN (reg)); \
+	p = (char *) SYN68K_TO_US_RAW (CLEAN (reg)); \
 	IFDEBUG (printf ("\t" #p " == %p\n", p)); \
 	CASE_POSTAMBLE (ROUND_UP (PTR_WORDS))
 
@@ -840,7 +841,7 @@ interpret_code (const uint16 *start_code)
       CASE (casenum) \
         CASE_PREAMBLE ("Reserved - compute " #p " for mode == 4, reg == " \
 		       #reg ", size == " #size, "", "", "", "") \
-	p = (char *) SYN68K_TO_US (CLEAN (reg - size)); \
+	p = (char *) SYN68K_TO_US_RAW (CLEAN (reg - size)); \
 	IFDEBUG (printf ("\t" #p " == %p\n", p)); \
 	CASE_POSTAMBLE (ROUND_UP (PTR_WORDS))
 	
@@ -900,7 +901,7 @@ interpret_code (const uint16 *start_code)
       CASE (casenum) \
         CASE_PREAMBLE ("Reserved - compute " #p " for mode == 5, "\
 		       "reg == " #reg, "", "", "", "") \
-	p = (char *) SYN68K_TO_US (CLEAN (reg + (*(int32 *)code))); \
+	p = (char *) SYN68K_TO_US_RAW (CLEAN (reg + (*(int32 *)code))); \
 	IFDEBUG (printf ("\t" #p " == %p\n", p)); \
 	CASE_POSTAMBLE (ROUND_UP (PTR_WORDS + 2))
 
@@ -926,7 +927,7 @@ interpret_code (const uint16 *start_code)
       CASE (0x0054)
 	CASE_PREAMBLE ("Reserved - compute cpu_state.amode_p for (xxx).W",
 		       "", "", "", "")
-	cpu_state.amode_p = (char *) SYN68K_TO_US (CLEAN (*(int32 *)code));
+	cpu_state.amode_p = (char *) SYN68K_TO_US_RAW (CLEAN (*(int32 *)code));
 #ifdef DEBUG
 	printf ("\tcpu_state.amode_p = %p\n", (void *) cpu_state.amode_p);
 #endif
@@ -935,7 +936,7 @@ interpret_code (const uint16 *start_code)
       CASE (0x0055)
 	CASE_PREAMBLE ("Reserved - compute cpu_state.reversed_amode_p for (xxx).W",
 		       "", "", "", "")
-	cpu_state.reversed_amode_p = (char *) SYN68K_TO_US (CLEAN (*(int32 *)code));
+	cpu_state.reversed_amode_p = (char *) SYN68K_TO_US_RAW (CLEAN (*(int32 *)code));
 #ifdef DEBUG
 	printf ("\tcpu_state.reversed_amode_p = %p\n", (void *) cpu_state.reversed_amode_p);
 #endif
@@ -1072,11 +1073,11 @@ interpret_code (const uint16 *start_code)
 	outer_displacement = ((int32 *)code)[1];
 
 	if (flags & 2)
-	  temp = (char *) SYN68K_TO_US (READSL (areg + base_displacement
+	  temp = (char *) SYN68K_TO_US_RAW (READSL (areg + base_displacement
 						+ index)
 					+ outer_displacement);
 	else
-	  temp = (char *) SYN68K_TO_US (READSL (areg + base_displacement)
+	  temp = (char *) SYN68K_TO_US_RAW (READSL (areg + base_displacement)
 					+ index + outer_displacement);
 
 	if (flags & 1)

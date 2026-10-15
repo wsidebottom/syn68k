@@ -198,9 +198,10 @@ GLOBAL_REGISTER_DECLS
  * memory before the array.
  */
 extern uint16 callback_dummy_address_space[];
+extern uint16 *syn68k_callback_address_space;
 #define CALLBACK_SLOP 16
 #define MAGIC_ADDRESS_BASE \
-((syn68k_addr_t) US_TO_SYN68K((unsigned long) (&callback_dummy_address_space[CALLBACK_SLOP])))
+((syn68k_addr_t) US_TO_SYN68K((unsigned long) (&syn68k_callback_address_space[CALLBACK_SLOP])))
 #define MAGIC_EXIT_EMULATOR_ADDRESS (MAGIC_ADDRESS_BASE + 0)
 #define MAGIC_RTE_ADDRESS           (MAGIC_ADDRESS_BASE + 2)
 
@@ -235,24 +236,49 @@ extern uint16 callback_dummy_address_space[];
 #if SIZEOF_CHAR_P == 4
 
 extern uint32 ROMlib_offset;
-#define SYN68K_TO_US(addr) ((uint16 *) ((unsigned long)addr + ROMlib_offset)) /* uint16 * only the default. */
-#define US_TO_SYN68K(addr) (/*(syn68k_addr_t)*/(int32) (addr) - ROMlib_offset)
+#define SYN68K_TO_US_RAW(addr) ((uint16 *) ((uint32)(addr) + ROMlib_offset))
+#define US_TO_SYN68K_RAW(addr) ((uint32)(ptr_sized_uint)(addr) - ROMlib_offset)
 
 #elif SIZEOF_CHAR_P == 8
 
 extern uint64 ROMlib_offset;
-#define SYN68K_TO_US(addr) ((uint16 *) ((uint64)(uint32)addr + ROMlib_offset)) /* uint16 * only the default. */
-#define US_TO_SYN68K(addr) ((uint32) ((long) (addr) - ROMlib_offset))
+#define SYN68K_TO_US_RAW(addr) ((uint16 *) ((uint64)(uint32)(addr) + ROMlib_offset))
+#define US_TO_SYN68K_RAW(addr) ((uint32) ((ptr_sized_uint)(addr) - ROMlib_offset))
 
 #else
 #error "SIZEOF_CHAR_P unknown"
 #endif
 
+extern uint32 syn68k_address_mask;
+extern unsigned syn68k_host_alias_count;
+extern uint32 syn68k_host_alias_base, syn68k_host_alias_size;
+extern void *syn68k_guest_to_host (uint32 address);
+extern uint32 syn68k_host_to_guest (ptr_sized_uint address);
+extern void syn68k_set_memory_window (uint32 size, uint32 alias_base,
+                                      uint32 alias_size);
+extern void syn68k_set_addressing_mode (int mode32);
+
+static inline uint16 *syn68k_to_us (uint32 address)
+{
+  address &= syn68k_address_mask;
+  if (syn68k_host_alias_count
+      && address - syn68k_host_alias_base < syn68k_host_alias_size)
+    return (uint16 *) syn68k_guest_to_host (address);
+  return SYN68K_TO_US_RAW (address);
+}
+
+#define SYN68K_TO_US(addr) syn68k_to_us ((uint32)(ptr_sized_uint)(addr))
+#define US_TO_SYN68K(addr) \
+  ((syn68k_address_mask == 0xFFFFFFFFUL && !syn68k_host_alias_size) \
+   ? US_TO_SYN68K_RAW (addr) : syn68k_host_to_guest ((ptr_sized_uint)(addr)))
+/* Effective addresses retain tag bits for LEA; mask only on memory access. */
+#define SYN68K_AMODE_US(ptr) SYN68K_TO_US (US_TO_SYN68K_RAW (ptr))
+
      /* These macros should not be used within Syn68k, but are needed in
 	ROMlib for translations of addresses where it's important to preserve
 	the address 0 as 0 */
 
-#define SYN68K_TO_US_CHECK0(addr) ({ typeof(addr) t; t = addr; t ? SYN68K_TO_US(t) : (uint16 *) 0; })
+#define SYN68K_TO_US_CHECK0(addr) ({ uint32 t = (uint32)(addr) & syn68k_address_mask; t ? SYN68K_TO_US(t) : (uint16 *) 0; })
 #define US_TO_SYN68K_CHECK0(addr) ({ typeof(addr) t; t = addr; t ? US_TO_SYN68K(t) : (int32) 0; })
 
 /* Macros for byte swapping + specifying signedness.  On a big endian

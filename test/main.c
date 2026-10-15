@@ -66,6 +66,9 @@ main (int argc, char *argv[])
     }
 
   /* Initialize stuff. */
+#if defined (__MINGW32__)
+  reserve_reference_test_memory ();
+#endif
   initialize_68k_emulator (NULL, native_p, trap_vectors, 0);
 
 #if 0

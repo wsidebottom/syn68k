@@ -36,6 +36,23 @@ static void hexdump (FILE *stream, uint16 *addr, int num_words);
 
 #define	SLOP	(sizeof(uint16) + sizeof(uint32)) /* for ccr and return_addr */
 
+#if defined (__MINGW32__)
+static uint8 *reference_memory;
+void
+reserve_reference_test_memory (void)
+{
+  reference_memory = VirtualAlloc ((void *) 0x7F000000,
+    MEMORY_OFFSET + MEM_SIZE + 512 + SLOP,
+    MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  if (!reference_memory)
+    {
+      fprintf (stderr, "Unable to reserve CPU test memory; error %lu.\n",
+               (unsigned long) GetLastError ());
+      exit (EXIT_FAILURE);
+    }
+}
+#endif
+
 void
 test_all_instructions (uint32 try_count)
 {
@@ -57,9 +74,7 @@ test_all_instructions (uint32 try_count)
 #if defined (__MINGW32__)
 /* Match the Linux reference address without depending on malloc's layout. */
 #define DESIRED_PTR ((uint8 *) 0x7F000000 + MEMORY_OFFSET)
-      uint8 *m = VirtualAlloc ((void *) 0x7F000000,
-			      MEMORY_OFFSET + MEM_SIZE + CODE_SIZE + SLOP,
-			      MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+      uint8 *m = reference_memory;
       if (m == NULL)
 	{
 	  fprintf (stderr, "Unable to allocate CPU test memory; error %lu.\n",

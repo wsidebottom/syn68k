@@ -26,6 +26,7 @@ int lowest_free_callback_slot;
  * there.
  */
 uint16 callback_dummy_address_space[MAX_CALLBACKS + CALLBACK_SLOP];
+uint16 *syn68k_callback_address_space = callback_dummy_address_space;
 
 void
 callback_init (void)

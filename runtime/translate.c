@@ -85,6 +85,8 @@ generate_block (Block *parent, uint32 m68k_address, Block **new
 		)
 {
   Block *b, *old_block;
+
+  m68k_address &= syn68k_address_mask;
   TempBlockInfo tbi;
   int cc_needed_by_this_block, cc_needed_by_children;
   int i;
@@ -907,7 +909,7 @@ generate_amode_fetch (uint16 *code, const uint16 *m68koperand, int amode,
 					 + (0x24 << ((extword >> 11) & 1))
 					 + (reversed * 9) + reg));
 
-	  WRITE_PTR (scode, SYN68K_TO_US ((ptr_sized_uint)
+	  WRITE_PTR (scode, SYN68K_TO_US_RAW ((ptr_sized_uint)
 					  (((int8 *) m68koperand)[1])));
 	  scode += PTR_WORDS;
 	  *(uint32 *)(scode    ) = (extword >> 12) & 7;
@@ -944,7 +946,7 @@ generate_amode_fetch (uint16 *code, const uint16 *m68koperand, int amode,
 	    disp = 0;
 	    break;
 	    }
-	  WRITE_PTR (scode, SYN68K_TO_US (disp));
+	  WRITE_PTR (scode, SYN68K_TO_US_RAW (disp));
 	  scode += PTR_WORDS;
 
 	  if (!(extword & 0x40))
@@ -1016,7 +1018,7 @@ generate_amode_fetch (uint16 *code, const uint16 *m68koperand, int amode,
       return ROUND_UP (scode + 2 - code);
     case 1:
       {
-	char *val = (char *) SYN68K_TO_US (CLEAN
+	char *val = (char *) SYN68K_TO_US_RAW (CLEAN
 					   (READUL
 					    (US_TO_SYN68K (m68koperand))));
 
@@ -1082,7 +1084,7 @@ generate_amode_fetch (uint16 *code, const uint16 *m68koperand, int amode,
 	      break;
 	    }
 	    disp += US_TO_SYN68K (m68koperand);/* Add in PC to displacement. */
-	    WRITE_PTR (scode, SYN68K_TO_US (disp));
+	    WRITE_PTR (scode, SYN68K_TO_US_RAW (disp));
 	    scode += PTR_WORDS;
 
 	    if (!(extword & 0x40))

@@ -60,6 +60,7 @@ hash_destroy ()
 Block *
 hash_lookup (syn68k_addr_t addr)
 {
+  addr &= syn68k_address_mask;
   Block *bucket = block_hash_table[BLOCK_HASH (addr)];
 
   for (; bucket != NULL; bucket = bucket->next_in_hash_bucket)
@@ -81,6 +82,8 @@ hash_lookup_code_and_create_if_needed (syn68k_addr_t addr)
 {
   Block *b, *bucket, **bucket_ptr;
   int old_sigmask;
+
+  addr &= syn68k_address_mask;
 
   bucket_ptr = &block_hash_table[BLOCK_HASH (addr)];
   bucket = *bucket_ptr;

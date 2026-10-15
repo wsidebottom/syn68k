@@ -19,3 +19,7 @@ extern void test_all_instructions (uint32 try_count);
 #define MAX_ERRORS 30
 
 #endif  /* Not driver_h_ */
+/* Reserve the reference address before native-code allocation on Windows. */
+#if defined (__MINGW32__)
+extern void reserve_reference_test_memory (void);
+#endif
