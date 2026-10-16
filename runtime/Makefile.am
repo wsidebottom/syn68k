@@ -64,13 +64,19 @@ LOCAL_CFLAGS = -DRUNTIME -Iinclude
 all: libsyn68k.a
 
 .c.o:
-	$(CC) $(AM_CFLAGS) -c $(LOCAL_INCLUDES) $< -o $@
+	$(CC) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c $(LOCAL_INCLUDES) $< -o $@
 
 OBJS =	block.o diagnostics.o hash.o rangetree.o translate.o alloc.o	\
 	blockinfo.o trap.o destroyblock.o callback.o init.o interrupt.o	\
 	profile.o dosinterrupts.o deathqueue.o checksum.o native.o	\
 	backpatch.o recompile.o						\
 	mapindex.o mapinfo.o syn68k.o opcode_dummy.o
+
+# These objects use hand-written rules, so Automake does not track their
+# headers.  Address conversion changes must reach every runtime object.
+$(OBJS): Makefile $(srcdir)/../include/syn68k_public.h \
+         $(srcdir)/../include/syn68k_private.h \
+         $(wildcard $(srcdir)/include/*.h)
 
 mapinfo.o:	$(host_native)/host-xlate.h
 

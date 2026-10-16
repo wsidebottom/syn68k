@@ -48,6 +48,12 @@ subdir-stmp: $(MISC_OBJS) src-stmp obj-stmp
 	echo $(MISC_OBJS) 		\
              `ls _*.o` > subdir-stmp
 
+# Target objects and generated stubs also embed the address conversion
+# macros from the common runtime headers.
+$(MISC_OBJS) obj-stmp: $(runtimedir)/../include/syn68k_public.h \
+                      $(runtimedir)/../include/syn68k_private.h \
+                      $(wildcard $(runtimedir)/include/*.h)
+
 obj-stmp:
 	k=1;							\
 	for i in i386_stubs/*; do			\

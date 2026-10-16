@@ -52,6 +52,18 @@ int main (void)
   WRITEUB (alias + 37, 0xA5);
   assert (native_argument[37] == 0xA5);
   assert (SYN68K_TO_US (alias + 37) == (uint16 *) &native_argument[37]);
+  /* Execute an aliased host buffer, including a branch to another block.
+   * ROM entry points live outside the directly mapped Macintosh heap too.
+   */
+  WRITEUW (alias + 64, 0x702A);  /* moveq #42,d0 */
+  WRITEUW (alias + 66, 0x6002);  /* bra.s to moveq */
+  WRITEUW (alias + 68, 0x4AFC);  /* illegal, must be skipped */
+  WRITEUW (alias + 70, 0x7207);  /* moveq #7,d1 */
+  WRITEUW (alias + 72, 0x4E75);  /* rts */
+  EM_A7 = 0x3000;
+  WRITEUL (EM_A7, MAGIC_EXIT_EMULATOR_ADDRESS);
+  interpret_code (hash_lookup_code_and_create_if_needed (alias + 64));
+  assert (EM_D0 == 42 && EM_D1 == 7);
   syn68k_set_addressing_mode (1);
   assert (syn68k_address_mask == 0xFFFFFFFF);
   assert (SYN68K_TO_US (alias) == (uint16 *) native_argument);
