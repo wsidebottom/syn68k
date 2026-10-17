@@ -16,15 +16,28 @@ int main (void)
   };
   unsigned char *memory = calloc (1, 16 * 1024 * 1024);
   unsigned char native_argument[256] = { 0 };
-  uint32 alias;
+  uint32 alias, existing;
   unsigned i;
   assert (memory);
   ROMlib_offset = (ptr_sized_uint) memory;
   syn68k_callback_address_space = (uint16 *) (memory + 0x8000);
   syn68k_set_memory_window (16 * 1024 * 1024, 0x400000, 0x400000);
   initialize_68k_emulator (NULL, 1, (uint32 *) memory, 0);
+  /* Cache invalidation for native scratch buffers must not allocate aliases. */
+  {
+    unsigned count = syn68k_host_alias_count;
+    assert (!syn68k_lookup_guest_address ((ptr_sized_uint) native_argument,
+                                         &existing));
+    assert (syn68k_host_alias_count == count);
+    assert (syn68k_lookup_guest_address ((ptr_sized_uint) memory + 0x2000,
+                                        &existing));
+    assert (existing == 0x2000);
+  }
   /* Host pointers published during 32-bit startup must survive a later switch. */
   alias = US_TO_SYN68K (native_argument);
+  assert (syn68k_lookup_guest_address ((ptr_sized_uint) native_argument + 37,
+                                      &existing));
+  assert (existing == alias + 37);
   assert (alias >= 0x400000 && alias < 0x800000);
   syn68k_set_addressing_mode (0);
   assert (SYN68K_TO_US (alias) == (uint16 *) native_argument);

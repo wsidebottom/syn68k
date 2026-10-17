@@ -254,6 +254,8 @@ extern unsigned syn68k_host_alias_count;
 extern uint32 syn68k_host_alias_base, syn68k_host_alias_size;
 extern void *syn68k_guest_to_host (uint32 address);
 extern uint32 syn68k_host_to_guest (ptr_sized_uint address);
+/* Return an existing mapping without reserving space for a new host pointer. */
+extern int syn68k_lookup_guest_address (ptr_sized_uint address, uint32 *guest);
 extern void syn68k_set_memory_window (uint32 size, uint32 alias_base,
                                       uint32 alias_size);
 extern void syn68k_set_addressing_mode (int mode32);

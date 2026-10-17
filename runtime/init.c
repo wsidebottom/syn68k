@@ -61,21 +61,46 @@ syn68k_guest_to_host (uint32 address)
   return SYN68K_TO_US_RAW (address);
 }
 
-uint32
-syn68k_host_to_guest (ptr_sized_uint address)
+int
+syn68k_lookup_guest_address (ptr_sized_uint address, uint32 *guest)
 {
   ptr_sized_uint base = address & ~(ptr_sized_uint)(HOST_ALIAS_BYTES - 1);
   unsigned i;
   if (!address)
-    return 0;
+    {
+      *guest = 0;
+      return 1;
+    }
   if (address >= ROMlib_offset
       && address - ROMlib_offset < direct_memory_size)
-    return US_TO_SYN68K_RAW (address);
+    {
+      *guest = US_TO_SYN68K_RAW (address);
+      return 1;
+    }
   for (i = 0; i < syn68k_host_alias_count; ++i)
     if (host_alias[i] == base)
-      return syn68k_host_alias_base + i * HOST_ALIAS_BYTES + address - base;
+      {
+        *guest = syn68k_host_alias_base + i * HOST_ALIAS_BYTES + address - base;
+        return 1;
+      }
   if (!syn68k_host_alias_size && syn68k_address_mask == 0xFFFFFFFFUL)
-    return US_TO_SYN68K_RAW (address);
+    {
+      *guest = US_TO_SYN68K_RAW (address);
+      return 1;
+    }
+  return 0;
+}
+
+uint32
+syn68k_host_to_guest (ptr_sized_uint address)
+{
+  ptr_sized_uint base = address & ~(ptr_sized_uint)(HOST_ALIAS_BYTES - 1);
+  uint32 guest;
+  unsigned i;
+
+  if (syn68k_lookup_guest_address (address, &guest))
+    return guest;
+  i = syn68k_host_alias_count;
   if (syn68k_host_alias_count >= sizeof (host_alias) / sizeof (host_alias[0])
       || (syn68k_host_alias_count + 1) * HOST_ALIAS_BYTES > syn68k_host_alias_size)
     {
